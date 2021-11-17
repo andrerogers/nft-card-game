@@ -17,6 +17,9 @@ contract Character is ERC721 {
     Counters.Counter private _tokenIds;
 
     Gameplay.Character[] characters;
+    Gameplay.Character selected;
+    Gameplay.Character boss;
+    Gameplay.GameState currentState;
 
     mapping(uint256 => Gameplay.Character) public nftHolderCharacters;
     mapping(address => uint256) public nftHolders;
@@ -51,32 +54,69 @@ contract Character is ERC721 {
 	}
     }
 
-    function turn(Gameplay.GameState memory _currentState) public {
-	emit AttackComplete(Gameplay.attack(_currentState));
+    function turn() public {
+	currentState = Gameplay.attack(currentState);
+	emit AttackComplete(Gameplay.attack(currentState));
     }
-
 
     function getAllDefaultCharacters() public view returns (Gameplay.Character[] memory) {
 	return characters;
     }
 
-    function mintCharacter(uint _characterIndex) external {
+    function getCurrentState() public view returns (Gameplay.GameState memory) {
+	return currentState;
+    }
+
+    function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+	Gameplay.Character memory _character = nftHolderCharacters[_tokenId]; 
+	string memory strHp = Strings.toString(_character.attr.hp);
+	string memory strArmour = Strings.toString(_character.attr.armour);
+	string memory strDamage = Strings.toString(_character.attr.damage);
+
+	string memory json = Base64.encode(
+	    bytes(
+	    string(
+		abi.encodePacked(
+		'{"name": "',
+		_character.props.name,
+		' -- NFT #: ',
+		Strings.toString(_character.props.id),
+		'", "description": "This is an NFT that lets people play in the game Metaverse Elementals!", "image": "',
+		_character.props.imageURI,
+		'", "attributes": [ { "trait_type": "Health Points", "value": ',strHp,', "armour":',strArmour,'}, { "trait_type": "Damage", "value": ',
+		strDamage,'} ]}'
+		)
+	    )
+	    )
+	);
+
+	string memory output = string(
+	    abi.encodePacked("data:application/json;base64,", json)
+	);
+
+	return output;
+    }
+
+    function mintCharacter(uint _characterIndex, uint _bossIndex) external {
 	// Get current tokenId (starts at 1 since we incremented in the constructor).
 	uint256 newItemId = _tokenIds.current();
 
 	// Assigns the tokenId to the caller's wallet address, does the minting.
 	_safeMint(msg.sender, newItemId);
 
+	selected = characters[_characterIndex];
+	boss = characters[_bossIndex];
+
 	Gameplay.Properties memory mintedProps = Gameplay.Properties({
 	    id: _characterIndex,
-	    name: characters[_characterIndex].props.name,
-	    imageURI: characters[_characterIndex].props.imageURI
+	    name: selected.props.name,
+	    imageURI: selected.props.imageURI
 	}); 
 
 	Gameplay.Attributes memory mintedAttributes = Gameplay.Attributes({
 	    hp: characters[_characterIndex].attr.hp,
-	    armour: characters[_characterIndex].attr.armour,
-	    damage: characters[_characterIndex].attr.damage
+	    armour: selected.attr.armour,
+	    damage: selected.attr.damage
 	});
 
 	nftHolderCharacters[newItemId] = Gameplay.Character({
@@ -91,6 +131,11 @@ contract Character is ERC721 {
 
 	// Increment the tokenId for the next person that uses it.
 	_tokenIds.increment();
+
+	currentState = Gameplay.GameState({
+	    player: selected,
+	    enemy: boss
+	    });
 
 	emit CharacterMinted(msg.sender, newItemId, _characterIndex);
     }

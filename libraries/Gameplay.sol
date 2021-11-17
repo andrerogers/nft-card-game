@@ -68,33 +68,4 @@ library Gameplay {
 
 	return newState;
     }
-
-    function tokenURI(Character memory _character) internal pure returns (string memory) {
-	string memory strHp = Strings.toString(_character.attr.hp);
-	string memory strArmour = Strings.toString(_character.attr.armour);
-	string memory strDamage = Strings.toString(_character.attr.damage);
-
-	string memory json = Base64.encode(
-	    bytes(
-	    string(
-		abi.encodePacked(
-		'{"name": "',
-		_character.props.name,
-		' -- NFT #: ',
-		Strings.toString(_character.props.id),
-		'", "description": "This is an NFT that lets people play in the game Metaverse Elementals!", "image": "',
-		_character.props.imageURI,
-		'", "attributes": [ { "trait_type": "Health Points", "value": ',strHp,', "armour":',strArmour,'}, { "trait_type": "Damage", "value": ',
-		strDamage,'} ]}'
-		)
-	    )
-	    )
-	);
-
-	string memory output = string(
-	    abi.encodePacked("data:application/json;base64,", json)
-	);
-
-	return output;
-    }
 }
